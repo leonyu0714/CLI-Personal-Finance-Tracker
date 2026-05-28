@@ -165,6 +165,7 @@ private:
         }
 
         file.close();
+        sortByDate();
     }
 
     void saveToFile(){
@@ -193,37 +194,45 @@ private:
     }
 
     void sortByDate(){
-        for(int i = 0; i < size - 1; i++){
+        sortByDate(transactions, size);
+    }
+
+    void sortByDate(Transaction* data, int n){
+        for(int i = 0; i < n - 1; i++){
             int minIndex = i;
 
-            for(int j = i + 1; j < size; j++){
-                if(transactions[j].date < transactions[minIndex].date){
+            for(int j = i + 1; j < n; j++){
+                if(data[j].date < data[minIndex].date){
                     minIndex = j;
                 }
             }
 
             if(minIndex != i){
-                swapTransaction(transactions[i], transactions[minIndex]);
+                swapTransaction(data[i], data[minIndex]);
             }
         }
     }
 
     int selectionSortByCategory(){
+        return selectionSortByCategory(transactions, size);
+    }
+
+    int selectionSortByCategory(Transaction* data, int n){
         int comparisons = 0;
 
-        for(int i = 0; i < size - 1; i++){
+        for(int i = 0; i < n - 1; i++){
             int minIndex = i;
 
-            for(int j = i + 1; j < size; j++){
+            for(int j = i + 1; j < n; j++){
                 comparisons++;
 
-                if(transactions[j].category < transactions[minIndex].category){
+                if(data[j].category < data[minIndex].category){
                     minIndex = j;
                 }
             }
 
             if(minIndex != i){
-                swapTransaction(transactions[i], transactions[minIndex]);
+                swapTransaction(data[i], data[minIndex]);
             }
         }
 
@@ -297,6 +306,7 @@ public:
     }
 
     ~FinanceTracker(){
+        sortByDate();
         saveToFile();
         delete[] transactions;
     }
@@ -390,7 +400,7 @@ public:
         getline(cin, transactions[size].note);
 
         size++;
-
+        sortByDate();
         saveToFile();
 
         cout << "Transaction added successfully.\n";
@@ -426,7 +436,7 @@ public:
         }
 
         size--;
-
+        sortByDate();
         saveToFile();
 
         cout << "Transaction deleted successfully.\n";
@@ -446,6 +456,8 @@ public:
         for(int i = 0; i < size; i++){
             printTransactionRow(i);
         }
+
+        saveToFile();
     }
 
     void showSummary(){
@@ -500,29 +512,40 @@ public:
 
         string targetCategory;
         int comparisons = 0;
-        bool found = false;
+        int resultCnt = 0;
 
         cout << "\n=== Linear Search by Category ===\n";
         cout << "Enter category to search: ";
         cin >> targetCategory;
 
-        cout << "\n=== Search Results ===\n";
-        printTransactionHeader();
+        Transaction* results = new Transaction[size];
 
         for(int i = 0; i < size; i++){
             comparisons++;
 
             if(transactions[i].category == targetCategory){
-                printTransactionRow(i);
-                found = true;
+                results[resultCnt] = transactions[i];
+                resultCnt++;
             }
         }
 
-        if(!found){
+        cout << "\n=== Search Results Sorted by Date ===\n";
+
+        if(resultCnt == 0){
             cout << "No matching transactions found.\n";
+        }
+        else{
+            sortByDate(results, resultCnt);
+            printTransactionHeader();
+
+            for(int i = 0; i < resultCnt; i++){
+                printTransactionData(i + 1, results[i]);
+            }
         }
 
         cout << "\nLinear search comparisons: " << comparisons << endl;
+
+        delete[] results;
     }
 
     void binarySearchByCategory(){
@@ -533,27 +556,33 @@ public:
 
         string targetCategory;
         int comparisons = 0;
-        bool found = false;
 
         cout << "\n=== Binary Search by Category ===\n";
         cout << "Enter category to search: ";
         cin >> targetCategory;
 
-        selectionSortByCategory();
+        Transaction* sorted = new Transaction[size];
+
+        for(int i = 0; i < size; i++){
+            sorted[i] = transactions[i];
+        }
+
+        selectionSortByCategory(sorted, size);
 
         int left = 0;
         int right = size - 1;
         int mid = -1;
+        bool found = false;
 
         while(left <= right){
             mid = (left + right) / 2;
             comparisons++;
 
-            if(transactions[mid].category == targetCategory){
+            if(sorted[mid].category == targetCategory){
                 found = true;
                 break;
             }
-            else if(transactions[mid].category < targetCategory){
+            else if(sorted[mid].category < targetCategory){
                 left = mid + 1;
             }
             else{
@@ -561,33 +590,45 @@ public:
             }
         }
 
-        cout << "\n=== Search Results ===\n";
+        cout << "\n=== Search Results Sorted by Date ===\n";
 
         if(found){
             int start = mid;
             int end = mid;
 
-            while(start - 1 >= 0 && transactions[start - 1].category == targetCategory){
+            while(start - 1 >= 0 && sorted[start - 1].category == targetCategory){
                 comparisons++;
                 start--;
             }
 
-            while(end + 1 < size && transactions[end + 1].category == targetCategory){
+            while(end + 1 < size && sorted[end + 1].category == targetCategory){
                 comparisons++;
                 end++;
             }
 
+            int resultCnt = end - start + 1;
+            Transaction* results = new Transaction[resultCnt];
+
+            for(int i = 0; i < resultCnt; i++){
+                results[i] = sorted[start + i];
+            }
+
+            sortByDate(results, resultCnt);
             printTransactionHeader();
 
-            for(int i = start; i <= end; i++){
-                printTransactionRow(i);
+            for(int i = 0; i < resultCnt; i++){
+                printTransactionData(i + 1, results[i]);
             }
+
+            delete[] results;
         }
         else{
             cout << "No matching transactions found.\n";
         }
 
         cout << "\nBinary search comparisons: " << comparisons << endl;
+
+        delete[] sorted;
     }
 
     void compareSearchPerformance(){
@@ -613,7 +654,13 @@ public:
             }
         }
 
-        int sortComparisons = selectionSortByCategory();
+        Transaction* sorted = new Transaction[size];
+
+        for(int i = 0; i < size; i++){
+            sorted[i] = transactions[i];
+        }
+
+        int sortComparisons = selectionSortByCategory(sorted, size);
 
         int binaryComparisons = 0;
         int left = 0;
@@ -625,11 +672,11 @@ public:
             mid = (left + right) / 2;
             binaryComparisons++;
 
-            if(transactions[mid].category == targetCategory){
+            if(sorted[mid].category == targetCategory){
                 found = true;
                 break;
             }
-            else if(transactions[mid].category < targetCategory){
+            else if(sorted[mid].category < targetCategory){
                 left = mid + 1;
             }
             else{
@@ -643,12 +690,12 @@ public:
             int start = mid;
             int end = mid;
 
-            while(start - 1 >= 0 && transactions[start - 1].category == targetCategory){
+            while(start - 1 >= 0 && sorted[start - 1].category == targetCategory){
                 binaryComparisons++;
                 start--;
             }
 
-            while(end + 1 < size && transactions[end + 1].category == targetCategory){
+            while(end + 1 < size && sorted[end + 1].category == targetCategory){
                 binaryComparisons++;
                 end++;
             }
@@ -661,15 +708,18 @@ public:
         cout << "Total transactions: " << size << endl;
         cout << "Matching transactions: " << linearMatches << endl;
 
-        cout << "\nLinear search comparisons: " << linearComparisons << endl;
+        cout << "\nCost means comparison count, not actual running time.\n";
+        cout << "Linear search comparisons: " << linearComparisons << endl;
         cout << "Selection sort comparisons: " << sortComparisons << endl;
         cout << "Binary search comparisons: " << binaryComparisons << endl;
         cout << "Total cost for sort + binary search: "
              << sortComparisons + binaryComparisons << endl;
 
-        if(linearMatches == 0){
+        if(linearMatches == 0 && binaryMatches == 0){
             cout << "\nNo matching transactions found.\n";
         }
+
+        delete[] sorted;
     }
 
     void showTopKExpenses(){
